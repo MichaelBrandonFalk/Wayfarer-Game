@@ -22,6 +22,7 @@
   --font-display: 'IM Fell English SC', serif;
   --font-body: 'Spectral', serif;
   --font-utility: 'Spectral SC', serif;
+  --reader-font-size: 1.05rem;
 }
 
 * { box-sizing: border-box; }
@@ -118,6 +119,9 @@ body {
 
 /* ---------- Game shell ---------- */
 .ledger-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -175,7 +179,7 @@ body {
   padding: 24px 28px;
   margin-bottom: 20px;
   line-height: 1.7;
-  font-size: 1.05rem;
+  font-size: var(--reader-font-size);
   max-height: 56vh;
   overflow-y: auto;
   scroll-behavior: smooth;
@@ -266,7 +270,7 @@ body {
 .choice-btn {
   text-align: left;
   font-family: var(--font-body);
-  font-size: 1rem;
+  font-size: calc(var(--reader-font-size) * 0.95);
   padding: 14px 18px;
   border: 1px solid var(--brass);
   border-radius: 3px;
@@ -298,7 +302,7 @@ body {
   border-radius: 3px;
   background: var(--parchment-card);
   font-family: var(--font-body);
-  font-size: 0.95rem;
+  font-size: calc(var(--reader-font-size) * 0.9);
   color: var(--ink);
 }
 .free-action-form input:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
@@ -307,7 +311,7 @@ body {
   font-family: var(--font-utility);
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  font-size: 0.8rem;
+  font-size: calc(var(--reader-font-size) * 0.76);
   padding: 0 18px;
   border: 1px solid var(--forest);
   border-radius: 3px;
@@ -365,6 +369,82 @@ body {
 .stat-label { font-family: var(--font-utility); text-transform: uppercase; font-size: 0.8rem; color: var(--ink-soft); }
 .stat-value { font-weight: 600; }
 
+/* ---------- Settings ---------- */
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--parchment-dark);
+}
+.settings-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+.settings-copy { flex: 1; min-width: 0; }
+.settings-copy h3 {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--wine);
+}
+.settings-copy p {
+  margin: 0;
+  color: var(--ink-soft);
+  line-height: 1.45;
+  font-size: 0.92rem;
+}
+
+.settings-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.settings-btn {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid var(--forest);
+  border-radius: 3px;
+  background: var(--forest);
+  color: var(--parchment);
+  font-family: var(--font-utility);
+  font-size: 0.76rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.settings-btn.secondary {
+  background: var(--parchment-card);
+  color: var(--wine);
+  border-color: var(--brass);
+}
+.settings-btn.danger {
+  background: var(--wine);
+  border-color: var(--wine-dark);
+}
+
+.font-control {
+  display: grid;
+  grid-template-columns: minmax(140px, 220px) 48px;
+  align-items: center;
+  gap: 10px;
+}
+.font-control input { width: 100%; accent-color: var(--wine); }
+.font-value {
+  font-family: var(--font-utility);
+  font-size: 0.78rem;
+  color: var(--ink-soft);
+  text-align: right;
+}
+
 /* ---------- Footer ---------- */
 .ledger-footer {
   position: fixed;
@@ -381,9 +461,56 @@ body {
 .llm-status { font-family: var(--font-utility); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
 
 @media (max-width: 520px) {
-  .ledger-header { padding: 12px; }
-  .ledger-body { padding: 16px 12px 110px; }
+  .ledger-header {
+    align-items: stretch;
+    padding: 10px 12px;
+    gap: 10px;
+  }
+  .seal-title.small { font-size: 1.35rem; }
+  .tab-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+  .tab-btn {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 8px 11px;
+    font-size: 0.68rem;
+  }
+  .ledger-body { padding: 14px 10px 22px; }
   .seal-title { font-size: 1.9rem; }
+  .narration-box {
+    max-height: none;
+    padding: 18px 16px;
+    line-height: 1.6;
+  }
+  .choice-btn { padding: 13px 14px; }
+  .free-action-form { flex-direction: column; }
+  .free-action-form input,
+  .quill-btn {
+    width: 100%;
+    min-height: 46px;
+  }
+  .ledger-footer {
+    position: static;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .llm-status {
+    flex: 1 0 100%;
+    text-align: center;
+  }
+  .settings-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .settings-actions { justify-content: stretch; }
+  .settings-btn { flex: 1; }
+  .font-control { grid-template-columns: 1fr 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -413,6 +540,7 @@ body {
       <button class="tab-btn" data-tab="abilities">Abilities</button>
       <button class="tab-btn" data-tab="party">Party</button>
       <button class="tab-btn" data-tab="character">Character</button>
+      <button class="tab-btn" data-tab="settings">Settings</button>
     </nav>
   </header>
 
@@ -455,6 +583,51 @@ body {
     <section id="tab-character" class="tab-panel">
       <h2 class="panel-title">Character Sheet</h2>
       <div id="character-sheet" class="character-sheet"></div>
+    </section>
+
+    <section id="tab-settings" class="tab-panel">
+      <h2 class="panel-title">Settings</h2>
+      <div class="settings-panel">
+        <div class="settings-row">
+          <div class="settings-copy">
+            <h3>Save Journey</h3>
+            <p>Store the current game in this browser and download a backup file.</p>
+          </div>
+          <div class="settings-actions">
+            <button id="settings-save-btn" class="settings-btn" type="button">Save</button>
+            <button id="settings-export-btn" class="settings-btn secondary" type="button">Download</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy">
+            <h3>Load Journey</h3>
+            <p>Import a saved Wayfarer's Ledger file and resume from that point.</p>
+          </div>
+          <div class="settings-actions">
+            <button id="settings-load-btn" class="settings-btn secondary" type="button">Load File</button>
+            <input id="settings-load-file" type="file" accept="application/json,.json" hidden>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy">
+            <h3>Text Size</h3>
+            <p>Adjust story text for comfortable reading.</p>
+          </div>
+          <div class="font-control">
+            <input id="font-size-slider" type="range" min="90" max="130" step="5" value="105">
+            <span id="font-size-value" class="font-value">105%</span>
+          </div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-copy">
+            <h3>Reset</h3>
+            <p>Clear this browser's saved game and begin again at the standing stone.</p>
+          </div>
+          <div class="settings-actions">
+            <button id="settings-reset-btn" class="settings-btn danger" type="button">Reset</button>
+          </div>
+        </div>
+      </div>
     </section>
 
   </main>
@@ -730,6 +903,7 @@ function clampDifficulty(dc) {
 // ===== state.js =====
 
 const SAVE_KEY = "wayfarers-ledger-save-v1";
+const SETTINGS_KEY = "wayfarers-ledger-settings-v1";
 
 function freshState() {
   return {
@@ -763,6 +937,27 @@ function loadState() {
   }
 }
 
+function validateState(candidate) {
+  if (!candidate || typeof candidate !== "object") return null;
+  if (!candidate.player || !candidate.currentNode || !STORY[candidate.currentNode]) return null;
+  const next = {
+    ...freshState(),
+    ...candidate,
+    player: { ...freshState().player, ...candidate.player },
+  };
+  if (!next.player.skills) next.player.skills = structuredClone(STARTING_SKILLS);
+  Object.keys(STARTING_SKILLS).forEach(skill => {
+    if (!next.player.skills[skill]) next.player.skills[skill] = { level: 1, xp: 0 };
+  });
+  if (!Array.isArray(next.inventory)) next.inventory = [];
+  if (!Array.isArray(next.abilities)) next.abilities = structuredClone(STARTING_ABILITIES);
+  if (!Array.isArray(next.party)) next.party = [];
+  if (!next.flags || typeof next.flags !== "object") next.flags = {};
+  if (!Array.isArray(next.history)) next.history = [];
+  if (!Array.isArray(next.log)) next.log = [];
+  return next;
+}
+
 function saveState(state) {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
@@ -771,6 +966,27 @@ function saveState(state) {
     console.warn("Could not save game.", e);
     return false;
   }
+}
+
+function loadSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY) || "{}");
+    return {
+      fontSize: clampFontSize(parsed.fontSize ?? 105),
+    };
+  } catch (e) {
+    return { fontSize: 105 };
+  }
+}
+
+function saveSettings(settings) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function clampFontSize(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 105;
+  return Math.min(130, Math.max(90, Math.round(n / 5) * 5));
 }
 
 function resetState() {
@@ -1054,6 +1270,7 @@ const LLM = { initEngine, isReady, narrate, classifyAction };
 // ===== main.js =====
 
 let state = loadState();
+let settings = loadSettings();
 let llmEnabled = false;
 let pendingAction = null; // { kind: 'choice'|'custom', skill, dc, label, choice? }
 let inputLocked = false;
@@ -1071,6 +1288,7 @@ const narrationBox = el("narration");
 // ---------- Boot ----------
 async function boot() {
   skipBtn.addEventListener("click", () => enterGame(false));
+  applySettings();
   try {
     await LLM.initEngine((progress, text) => {
       progressFill.style.width = `${Math.round(progress * 100)}%`;
@@ -1092,6 +1310,7 @@ function enterGame(withLlm) {
     : `Narrator: quick-actions only (local, d${DIE_SIDES})`;
   setupTabs();
   setupFooter();
+  setupSettings();
   setupFreeAction();
   renderAll();
 
@@ -1118,16 +1337,111 @@ function setupTabs() {
 
 function setupFooter() {
   el("save-btn").addEventListener("click", () => {
-    const ok = saveState(state);
-    flashFooterMessage(ok ? "Saved." : "Could not save.");
+    saveCurrentJourney();
   });
   el("reset-btn").addEventListener("click", () => {
-    if (!confirm("Reset your whole journey? This cannot be undone.")) return;
-    state = resetState();
-    renderAll();
-    narrationBox.innerHTML = "";
-    enterNode(state.currentNode, { isEntry: true });
+    resetJourney();
   });
+}
+
+function setupSettings() {
+  el("settings-save-btn").addEventListener("click", saveCurrentJourney);
+  el("settings-export-btn").addEventListener("click", exportJourney);
+  el("settings-load-btn").addEventListener("click", () => el("settings-load-file").click());
+  el("settings-load-file").addEventListener("change", loadJourneyFromFile);
+  el("settings-reset-btn").addEventListener("click", resetJourney);
+  el("font-size-slider").addEventListener("input", (event) => {
+    settings.fontSize = clampFontSize(event.target.value);
+    applySettings();
+    saveSettings(settings);
+  });
+}
+
+function applySettings() {
+  const size = clampFontSize(settings.fontSize);
+  settings.fontSize = size;
+  document.documentElement.style.setProperty("--reader-font-size", `${size / 100 * 1.05}rem`);
+  const slider = el("font-size-slider");
+  const value = el("font-size-value");
+  if (slider) slider.value = String(size);
+  if (value) value.textContent = `${size}%`;
+}
+
+function saveCurrentJourney() {
+  const ok = saveState(state);
+  flashFooterMessage(ok ? "Saved." : "Could not save.");
+  return ok;
+}
+
+function exportJourney() {
+  if (!saveCurrentJourney()) return;
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    state,
+    settings,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `wayfarers-ledger-save-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  flashFooterMessage("Save downloaded.");
+}
+
+async function loadJourneyFromFile(event) {
+  const file = event.target.files?.[0];
+  event.target.value = "";
+  if (!file) return;
+  try {
+    const parsed = JSON.parse(await file.text());
+    const importedState = validateState(parsed.state || parsed);
+    if (!importedState) {
+      flashFooterMessage("Save file was not valid.");
+      return;
+    }
+    if (parsed.settings && typeof parsed.settings === "object") {
+      settings = {
+        ...settings,
+        fontSize: clampFontSize(parsed.settings.fontSize ?? settings.fontSize),
+      };
+      saveSettings(settings);
+      applySettings();
+    }
+    state = importedState;
+    saveState(state);
+    renderLoadedJourney();
+    flashFooterMessage("Loaded.");
+  } catch (e) {
+    console.warn("Could not load save file.", e);
+    flashFooterMessage("Could not load file.");
+  }
+}
+
+function renderLoadedJourney() {
+  renderAll();
+  narrationBox.innerHTML = "";
+  if (state.log.length === 0) {
+    enterNode(state.currentNode, { isEntry: true });
+  } else {
+    replayLog();
+    renderChoices(STORY[state.currentNode]);
+  }
+  el("dice-tray").classList.add("hidden");
+  lockInput(false);
+}
+
+function resetJourney() {
+  if (!confirm("Reset your whole journey? This cannot be undone.")) return;
+  state = resetState();
+  renderAll();
+  narrationBox.innerHTML = "";
+  enterNode(state.currentNode, { isEntry: true });
+  flashFooterMessage("Reset.");
 }
 
 function flashFooterMessage(msg) {
@@ -1142,6 +1456,7 @@ function renderAll() {
   renderAbilitiesAndSkills();
   renderParty();
   renderCharacterSheet();
+  applySettings();
 }
 
 function renderInventory() {
