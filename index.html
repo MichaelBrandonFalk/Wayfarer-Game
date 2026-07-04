@@ -867,6 +867,7 @@ function pushHistory(state, entry, maxEntries = 12) {
 let webllm = null;
 let engine = null;
 let modelReady = false;
+let structuredClassifierAvailable = true;
 
 // Small, browser-friendly default. Users on capable hardware can pick a
 // larger model from the dropdown you add in the UI, if you extend this list.
@@ -971,23 +972,66 @@ async function classifyAction(context) {
   if (!modelReady || !engine) {
     throw new Error("LLM engine is not ready.");
   }
-  const reply = await engine.chat.completions.create({
+  const messages = [
+    { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
+    { role: "user", content: context },
+  ];
+  const baseRequest = {
     messages: [
-      { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
-      { role: "user", content: context },
+      ...messages,
     ],
-    response_format: {
-      type: "json_object",
-      schema: CLASSIFIER_RESPONSE_SCHEMA,
-    },
     temperature: 0.15,
     max_tokens: 150,
-  });
-  const raw = reply.choices?.[0]?.message?.content?.trim() ?? "";
-  return parseClassifierJson(raw);
+  };
+  const attempts = structuredClassifierAvailable
+    ? [
+        {
+          ...baseRequest,
+          response_format: {
+            type: "json_object",
+            schema: CLASSIFIER_RESPONSE_SCHEMA,
+          },
+        },
+        { ...baseRequest, response_format: { type: "json_object" } },
+        baseRequest,
+      ]
+    : [
+        { ...baseRequest, response_format: { type: "json_object" } },
+        baseRequest,
+      ];
+
+  for (const request of attempts) {
+    try {
+      const reply = await engine.chat.completions.create(request);
+      const raw = reply.choices?.[0]?.message?.content?.trim() ?? "";
+      const parsed = parseClassifierJson(raw);
+      if (parsed) return parsed;
+    } catch (e) {
+      if (request.response_format?.schema) {
+        structuredClassifierAvailable = false;
+        console.warn("WebLLM schema JSON classification failed; falling back to plain JSON mode.", e);
+      } else {
+        console.warn("WebLLM classification attempt failed.", e);
+      }
+    }
+  }
+  return null;
 }
 
 function parseClassifierJson(raw) {
+  const candidates = [raw];
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start !== -1 && end > start) candidates.push(raw.slice(start, end + 1));
+
+  for (const candidate of candidates) {
+    const parsed = normalizeClassifierJson(candidate);
+    if (parsed) return parsed;
+  }
+  return null;
+}
+
+function normalizeClassifierJson(raw) {
   try {
     const parsed = JSON.parse(raw);
     const validTypes = ["choice", "custom_roll", "custom_free", "infeasible"];
@@ -1395,11 +1439,18 @@ Classify it now.`;
   }
 
   if (!result) {
+    const fallback = classifyActionLocally(text, node);
+    if (fallback) {
+      result = fallback;
+    }
+  }
+
+  if (!result) {
     try {
       const flavor = await LLM.narrate(`Current scene: ${node.narration}\nThe player attempts: "${text}"\nRespond in 1-2 sentences, staying strictly within this scene, granting no items or progress.`);
       logAndRender("flavor", flavor);
     } catch (e2) {
-      logAndRender("system", "The narrator couldn't quite parse that — try rephrasing, or use one of the quick actions below.");
+      logAndRender("system", "You try it, but nothing certain comes of it yet.");
     }
     return;
   }
@@ -1430,6 +1481,57 @@ Classify it now.`;
 
 function handleFreeTextHeuristic(text) {
   const node = STORY[state.currentNode];
+  const best = findBestChoiceByText(text, node);
+  if (best) {
+    handleChoiceSelected(best, { alreadyLogged: true });
+  } else {
+    const options = (node.choices || []).map(c => `"${c.text}"`).join(", ") || "none right now";
+    logAndRender("system", `The narrator AI isn't running, so typed actions can only be matched to the quick actions below. Try: ${options}`);
+  }
+}
+
+function classifyActionLocally(text, node) {
+  const best = findBestChoiceByText(text, node);
+  if (best && node.choices) {
+    return {
+      matchType: "choice",
+      matchedChoiceIndex: node.choices.indexOf(best),
+      skill: null,
+      difficulty: null,
+      reason: "Matched locally to a listed choice.",
+    };
+  }
+
+  const words = text.toLowerCase().split(/\W+/).filter(Boolean);
+  if (words.length === 0) return null;
+
+  const joined = words.join(" ");
+  const skill =
+    /\b(push|pull|lift|break|force|carry|hold|shove|wrestle)\b/.test(joined) ? "strength" :
+    /\b(sneak|hide|climb|jump|dodge|balance|run|slip|crawl)\b/.test(joined) ? "agility" :
+    /\b(talk|ask|convince|persuade|charm|sing|bargain|greet)\b/.test(joined) ? "charm" :
+    "wit";
+
+  if (/\b(look|listen|wait|rest|think|inspect|examine|search|read)\b/.test(joined)) {
+    return {
+      matchType: "custom_free",
+      matchedChoiceIndex: null,
+      skill: null,
+      difficulty: null,
+      reason: "Reasonable local free action.",
+    };
+  }
+
+  return {
+    matchType: "custom_roll",
+    matchedChoiceIndex: null,
+    skill,
+    difficulty: 7,
+    reason: "Reasonable local action.",
+  };
+}
+
+function findBestChoiceByText(text, node) {
   const words = text.toLowerCase().split(/\W+/).filter(Boolean);
   let best = null;
   let bestScore = 0;
@@ -1438,12 +1540,7 @@ function handleFreeTextHeuristic(text) {
     const score = words.filter(w => choiceWords.includes(w)).length;
     if (score > bestScore) { bestScore = score; best = choice; }
   });
-  if (best && bestScore > 0) {
-    handleChoiceSelected(best, { alreadyLogged: true });
-  } else {
-    const options = (node.choices || []).map(c => `"${c.text}"`).join(", ") || "none right now";
-    logAndRender("system", `The narrator AI isn't running, so typed actions can only be matched to the quick actions below. Try: ${options}`);
-  }
+  return best && bestScore > 0 ? best : null;
 }
 
 boot();
