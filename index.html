@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wayfarer's Ledger — A Text RPG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=Spectral+SC:wght@500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --parchment: #EDE3CC;
+  --parchment-dark: #DCCBA0;
+  --parchment-card: #F4EEDC;
+  --ink: #2B2118;
+  --ink-soft: #4A3B2A;
+  --wine: #7A2E2E;
+  --wine-dark: #5C2222;
+  --forest: #3B5D42;
+  --brass: #B8933D;
+  --brass-light: #D4B368;
+
+  --font-display: 'IM Fell English SC', serif;
+  --font-body: 'Spectral', serif;
+  --font-utility: 'Spectral SC', serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--parchment);
+  color: var(--ink);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 20% 10%, rgba(184,147,61,0.08), transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(122,46,46,0.06), transparent 40%);
+}
+
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* ---------- Loading screen ---------- */
+#loading-screen.active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.loading-card {
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  background: var(--parchment-card);
+  border: 1px solid var(--brass);
+  border-radius: 4px;
+  padding: 40px 32px;
+  box-shadow: 0 0 0 6px var(--parchment), 0 8px 24px rgba(43,33,24,0.25);
+}
+
+.seal-title {
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  letter-spacing: 0.04em;
+  color: var(--wine);
+  margin: 0 0 16px;
+  text-shadow: 1px 1px 0 rgba(184,147,61,0.3);
+}
+.seal-title.small { font-size: 1.5rem; margin: 0; }
+
+.loading-label {
+  font-family: var(--font-utility);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  margin-bottom: 16px;
+}
+
+.progress-track {
+  height: 10px;
+  border: 1px solid var(--brass);
+  border-radius: 20px;
+  overflow: hidden;
+  background: var(--parchment-dark);
+  margin-bottom: 16px;
+}
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--brass), var(--wine));
+  transition: width 0.3s ease;
+}
+
+.loading-sub {
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--wine);
+  text-decoration: underline;
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  cursor: pointer;
+  margin-top: 12px;
+}
+.link-btn:hover { color: var(--wine-dark); }
+
+/* ---------- Game shell ---------- */
+.ledger-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 16px 24px;
+  background: var(--parchment-card);
+  border-bottom: 2px solid var(--brass);
+}
+
+.tab-nav { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.tab-btn {
+  font-family: var(--font-utility);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  padding: 8px 14px;
+  background: transparent;
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.tab-btn.active, .tab-btn:hover {
+  background: var(--wine);
+  border-color: var(--wine);
+  color: var(--parchment);
+}
+
+.ledger-body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 24px 20px 100px;
+}
+
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.panel-title {
+  font-family: var(--font-display);
+  color: var(--wine);
+  font-size: 1.6rem;
+  border-bottom: 1px solid var(--brass);
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+}
+
+/* ---------- Narration ---------- */
+.narration-box {
+  position: relative;
+  background: var(--parchment-card);
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  padding: 24px 28px;
+  margin-bottom: 20px;
+  line-height: 1.7;
+  font-size: 1.05rem;
+  max-height: 56vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+}
+.narration-box::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(184,147,61,0.4);
+  pointer-events: none;
+}
+.narration-box p { margin: 0 0 14px; }
+.narration-box p:last-child { margin-bottom: 0; }
+.narration-box p.system-line {
+  font-family: var(--font-utility);
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  color: var(--forest);
+  text-transform: uppercase;
+}
+.narration-box .drop-cap::first-letter {
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  float: left;
+  line-height: 0.8;
+  padding: 4px 8px 0 0;
+  color: var(--wine);
+}
+.narration-box p.player-line {
+  font-family: var(--font-utility);
+  font-size: 0.85rem;
+  letter-spacing: 0.03em;
+  color: var(--wine);
+}
+.narration-box p.player-line::before { content: "▸ "; }
+.narration-box p.flavor-line {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+.narration-box p.infeasible-line {
+  color: var(--wine-dark);
+  font-family: var(--font-utility);
+  font-size: 0.9rem;
+}
+
+.quick-actions-label {
+  font-family: var(--font-utility);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.7rem;
+  color: var(--ink-soft);
+  margin: 0 0 8px;
+}
+
+/* ---------- Dice tray ---------- */
+.dice-tray {
+  text-align: center;
+  background: var(--parchment-dark);
+  border: 1px dashed var(--brass);
+  border-radius: 3px;
+  padding: 18px;
+  margin-bottom: 20px;
+}
+.dice-tray.hidden { display: none; }
+.dice-prompt { font-family: var(--font-utility); text-transform: uppercase; font-size: 0.8rem; letter-spacing: 0.05em; margin-bottom: 10px; }
+
+.seal-btn {
+  font-family: var(--font-utility);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  padding: 12px 22px;
+  border-radius: 50px;
+  border: 2px solid var(--brass-light);
+  background: radial-gradient(circle at 35% 30%, var(--brass-light), var(--wine-dark) 80%);
+  color: var(--parchment);
+  cursor: pointer;
+  box-shadow: 0 3px 0 var(--wine-dark);
+}
+.seal-btn:active { transform: translateY(2px); box-shadow: none; }
+.seal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.dice-result { margin-top: 12px; font-weight: 600; min-height: 1.4em; }
+
+/* ---------- Choices ---------- */
+.choices { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+
+.choice-btn {
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 1rem;
+  padding: 14px 18px;
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  background: var(--parchment-card);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.choice-btn:hover { background: var(--parchment-dark); border-color: var(--wine); }
+.choice-btn .choice-tag {
+  font-family: var(--font-utility);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--forest);
+  margin-right: 8px;
+}
+.choice-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Free action ---------- */
+.free-action-form {
+  display: flex;
+  gap: 8px;
+}
+.free-action-form input {
+  flex: 1;
+  padding: 12px 14px;
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  background: var(--parchment-card);
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  color: var(--ink);
+}
+.free-action-form input:focus { outline: 2px solid var(--wine); outline-offset: 1px; }
+
+.quill-btn {
+  font-family: var(--font-utility);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.8rem;
+  padding: 0 18px;
+  border: 1px solid var(--forest);
+  border-radius: 3px;
+  background: var(--forest);
+  color: var(--parchment);
+  cursor: pointer;
+}
+.quill-btn:hover { background: #2c4732; }
+
+/* ---------- Cards (inventory / abilities / party) ---------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.item-card {
+  background: var(--parchment-card);
+  border: 1px solid var(--brass);
+  border-radius: 3px;
+  padding: 14px 16px;
+}
+.item-card h3 {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  color: var(--wine);
+  margin: 0 0 6px;
+}
+.item-card p { margin: 0; font-size: 0.9rem; color: var(--ink-soft); line-height: 1.5; }
+.item-card .qty {
+  display: inline-block;
+  margin-top: 8px;
+  font-family: var(--font-utility);
+  font-size: 0.75rem;
+  color: var(--forest);
+}
+
+.empty-note {
+  font-style: italic;
+  color: var(--ink-soft);
+  padding: 12px 0;
+}
+
+/* ---------- Skills ---------- */
+.skills-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+.skill-row { display: flex; align-items: center; gap: 12px; }
+.skill-name { font-family: var(--font-utility); text-transform: uppercase; font-size: 0.8rem; width: 110px; flex-shrink: 0; }
+.skill-track { flex: 1; height: 10px; border: 1px solid var(--brass); border-radius: 20px; background: var(--parchment-dark); overflow: hidden; }
+.skill-fill { height: 100%; background: linear-gradient(90deg, var(--forest), var(--brass)); }
+.skill-level { font-size: 0.8rem; color: var(--ink-soft); width: 46px; text-align: right; flex-shrink: 0; }
+
+/* ---------- Character sheet ---------- */
+.character-sheet { display: flex; flex-direction: column; gap: 14px; }
+.stat-row { display: flex; justify-content: space-between; border-bottom: 1px solid var(--parchment-dark); padding-bottom: 8px; }
+.stat-label { font-family: var(--font-utility); text-transform: uppercase; font-size: 0.8rem; color: var(--ink-soft); }
+.stat-value { font-weight: 600; }
+
+/* ---------- Footer ---------- */
+.ledger-footer {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 10px;
+  background: var(--parchment-card);
+  border-top: 1px solid var(--brass);
+  font-size: 0.8rem;
+}
+.llm-status { font-family: var(--font-utility); text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-soft); }
+
+@media (max-width: 520px) {
+  .ledger-header { padding: 12px; }
+  .ledger-body { padding: 16px 12px 110px; }
+  .seal-title { font-size: 1.9rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .progress-fill { transition: none; }
+}
+</style>
+</head>
+<body>
+
+
+<div id="loading-screen" class="screen active">
+  <div class="loading-card">
+    <h1 class="seal-title">Wayfarer's Ledger</h1>
+    <p class="loading-label" id="loading-label">Warming the hearth fire…</p>
+    <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+    <p class="loading-sub" id="loading-sub">Loading a small language model in your browser. This only happens once — it will be cached for next time.</p>
+    <button id="skip-llm-btn" class="link-btn">Play without the narrator AI (faster, still fully playable)</button>
+  </div>
+</div>
+
+<div id="game-screen" class="screen">
+  <header class="ledger-header">
+    <h1 class="seal-title small">Wayfarer's Ledger</h1>
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="story">Story</button>
+      <button class="tab-btn" data-tab="inventory">Inventory</button>
+      <button class="tab-btn" data-tab="abilities">Abilities</button>
+      <button class="tab-btn" data-tab="party">Party</button>
+      <button class="tab-btn" data-tab="character">Character</button>
+    </nav>
+  </header>
+
+  <main class="ledger-body">
+
+    <section id="tab-story" class="tab-panel active">
+      <div id="narration" class="narration-box"></div>
+
+      <div id="dice-tray" class="dice-tray hidden">
+        <p id="dice-prompt" class="dice-prompt"></p>
+        <button id="roll-btn" class="seal-btn">🎲 Roll the die</button>
+        <p id="dice-result" class="dice-result"></p>
+      </div>
+
+      <p class="quick-actions-label">Quick actions</p>
+      <div id="choices" class="choices"></div>
+
+      <form id="free-action-form" class="free-action-form">
+        <input type="text" id="free-action-input" placeholder="Or type what you do next — the narrator will judge it against the world…" maxlength="160">
+        <button type="submit" class="quill-btn">✒ Do it</button>
+      </form>
+    </section>
+
+    <section id="tab-inventory" class="tab-panel">
+      <h2 class="panel-title">Pack &amp; Purse</h2>
+      <div id="inventory-list" class="card-grid"></div>
+    </section>
+
+    <section id="tab-abilities" class="tab-panel">
+      <h2 class="panel-title">Abilities &amp; Skills</h2>
+      <div id="skills-list" class="skills-list"></div>
+      <div id="abilities-list" class="card-grid"></div>
+    </section>
+
+    <section id="tab-party" class="tab-panel">
+      <h2 class="panel-title">Your Party</h2>
+      <div id="party-list" class="card-grid"></div>
+    </section>
+
+    <section id="tab-character" class="tab-panel">
+      <h2 class="panel-title">Character Sheet</h2>
+      <div id="character-sheet" class="character-sheet"></div>
+    </section>
+
+  </main>
+
+  <footer class="ledger-footer">
+    <span id="llm-status" class="llm-status">Narrator: offline</span>
+    <button id="save-btn" class="link-btn">Save</button>
+    <button id="reset-btn" class="link-btn">Reset game</button>
+  </footer>
+</div>
+
+<script type="module">
+// ===== data.js =====
+// All static game content lives here. Edit this file to expand the game
+// without touching engine logic in state.js / game.js.
+
+// Grounding rules given to the LLM whenever it judges a free-typed action.
+// This is what keeps "type anything" from turning into "anything happens."
+const WORLD_RULES = `Setting: a low-magic, grounded medieval fantasy world, similar in tone to a cozy village fable.
+Hard limits — these actions are never possible and should be judged infeasible:
+- No flight, teleportation, modern technology, or firearms.
+- No sudden magic powers the player hasn't already been given.
+- No defeating multiple armed foes single-handedly, no killing named characters outright.
+- Nothing sexual, no graphic gore, no cruelty presented approvingly.
+- The player cannot leave the scene's location instantly except via an existing listed choice/exit.
+Everything else — talking, searching, climbing, sneaking, using items, clever tricks — is fair game,
+and should usually be resolved with a skill check rather than an automatic yes or no.`;
+
+const STARTING_SKILLS = {
+  strength:  { level: 1, xp: 0 },
+  agility:   { level: 1, xp: 0 },
+  wit:       { level: 1, xp: 0 },
+  charm:     { level: 1, xp: 0 },
+};
+
+const XP_PER_LEVEL = 20; // xp needed to go from level N to N+1 (scales below)
+
+const STARTING_INVENTORY = [
+  { id: "torch", name: "Traveler's Torch", qty: 1, type: "tool",
+    description: "A pitch-wrapped brand. Lights the way in dark places." },
+  { id: "rations", name: "Dried Rations", qty: 3, type: "consumable",
+    description: "Restores a little vigor when eaten." },
+  { id: "coin_pouch", name: "Coin Pouch", qty: 12, type: "currency",
+    description: "Copper and silver bits. The lifeblood of any wayfarer." },
+];
+
+const STARTING_ABILITIES = [
+  { id: "steady_hand", name: "Steady Hand", type: "passive",
+    description: "Your grip never wavers. +1 to any Agility roll." },
+  { id: "second_wind", name: "Second Wind", type: "active", usesLeft: 1,
+    description: "Once per rest, recover a small burst of vigor." },
+];
+
+// Party members you can recruit as the story unfolds.
+const RECRUITABLE_PARTY = {
+  fennick: {
+    id: "fennick", name: "Fennick", role: "Wandering Bard",
+    description: "A lute-slinging storyteller who trades songs for safe passage.",
+    joinFlag: "met_fennick",
+  },
+  briar: {
+    id: "briar", name: "Briar", role: "Herbalist Scout",
+    description: "Quiet, sharp-eyed, and never without a poultice for what ails you.",
+    joinFlag: "met_briar",
+  },
+};
+
+// Story graph. Each node: narration text (used if no LLM, or as a fallback/seed
+// for the LLM), and a list of choices. A choice can require a dice roll
+// (skill + difficulty) and can lead to different nodes on success/failure.
+const STORY = {
+  start: {
+    id: "start",
+    narration:
+      "The road out of Marrow's Hollow forks at an old standing stone, its face worn smooth by centuries of rain. Behind you, the village chimneys smoke gently in the morning cold. Ahead, the path splits toward a dark treeline to the west and a sunlit ridge to the east.",
+    choices: [
+      { text: "Head west, into the trees", tag: "Explore", goto: "forest_edge" },
+      { text: "Head east, along the ridge", tag: "Explore", goto: "ridge_path" },
+      { text: "Examine the standing stone first", tag: "Investigate", skill: "wit", dc: 6,
+        success: "stone_lore", failure: "stone_nothing" },
+    ],
+  },
+  stone_lore: {
+    id: "stone_lore",
+    narration:
+      "Tracing the worn carvings with your fingers, you make out a spiral and a crude sun — a waymarker of the old shepherd roads. Whoever cut this stone meant travelers to know both paths were once safe, before the woods grew wild.",
+    choices: [
+      { text: "Head west, into the trees", tag: "Explore", goto: "forest_edge" },
+      { text: "Head east, along the ridge", tag: "Explore", goto: "ridge_path" },
+    ],
+  },
+  stone_nothing: {
+    id: "stone_nothing",
+    narration:
+      "The carvings are too weathered to read. Whatever story this stone once told, it's kept its secret. The road still waits, west and east.",
+    choices: [
+      { text: "Head west, into the trees", tag: "Explore", goto: "forest_edge" },
+      { text: "Head east, along the ridge", tag: "Explore", goto: "ridge_path" },
+    ],
+  },
+  forest_edge: {
+    id: "forest_edge",
+    narration:
+      "The treeline swallows the road within a few dozen paces. Somewhere ahead, a lute plays — badly, but earnestly — and a voice curses at a snapped string.",
+    choices: [
+      { text: "Follow the music", tag: "Explore", goto: "meet_fennick" },
+      { text: "Press on quietly, avoiding whoever it is", tag: "Sneak", skill: "agility", dc: 8,
+        success: "forest_deep_success", failure: "forest_deep_fail" },
+    ],
+  },
+  meet_fennick: {
+    id: "meet_fennick",
+    narration:
+      "You find a lanky figure sitting on a fallen log, wrestling with a lute string that has clearly won. He looks up, entirely unbothered at being caught mid-defeat. 'Ah — a witness to my humiliation. Fennick, wandering bard, at your service. Company on the road, perhaps, in exchange for a decent story to tell of you later?'",
+    onEnter: { setFlag: "met_fennick" },
+    choices: [
+      { text: "Invite Fennick to join your party", tag: "Recruit", goto: "fennick_joined" },
+      { text: "Politely decline and move on", tag: "Explore", goto: "forest_deep_success" },
+    ],
+  },
+  fennick_joined: {
+    id: "fennick_joined",
+    narration:
+      "Fennick swings his lute over one shoulder and falls into step beside you, already humming a tune about 'the stranger from the standing stone.' You have the feeling you'll hear a much-embellished version of today by nightfall.",
+    onEnter: { addParty: "fennick" },
+    choices: [
+      { text: "Continue into the forest", tag: "Explore", goto: "forest_deep_success" },
+    ],
+  },
+  forest_deep_success: {
+    id: "forest_deep_success",
+    narration:
+      "The forest opens into a mossy hollow where a shallow stream crosses the path. It's peaceful here — a good place to rest a moment before continuing deeper.",
+    choices: [
+      { text: "Rest and recover", tag: "Rest", goto: "rest_forest" },
+      { text: "Push onward", tag: "Explore", goto: "forest_deeper" },
+    ],
+  },
+  forest_deep_fail: {
+    id: "forest_deep_fail",
+    narration:
+      "A root catches your foot and you stumble noisily through the brush. Somewhere off to the side, the badly-played lute stops abruptly. Whoever that was now knows exactly where you are.",
+    choices: [
+      { text: "Call out — better to meet them than be startled later", tag: "Explore", goto: "meet_fennick" },
+      { text: "Keep moving and hope they don't follow", tag: "Explore", goto: "forest_deeper" },
+    ],
+  },
+  rest_forest: {
+    id: "rest_forest",
+    narration:
+      "You sit by the stream and share out a portion of your rations. The water is cold and clean. You feel steadier for the pause.",
+    onEnter: { restParty: true, consumeItem: { id: "rations", qty: 1 } },
+    choices: [
+      { text: "Continue deeper into the forest", tag: "Explore", goto: "forest_deeper" },
+    ],
+  },
+  forest_deeper: {
+    id: "forest_deeper",
+    narration:
+      "The trees thin ahead, and you can just make out the shape of old stonework — the remains of a shepherd's watch-post, long abandoned, half-swallowed by ivy.",
+    choices: [
+      { text: "Search the ruin", tag: "Investigate", skill: "wit", dc: 9,
+        success: "ruin_find", failure: "ruin_nothing" },
+      { text: "Leave it be and continue on", tag: "Explore", goto: "chapter_end" },
+    ],
+  },
+  ruin_find: {
+    id: "ruin_find",
+    narration:
+      "Beneath a collapsed shelf of stone, wrapped in oilcloth gone stiff with age, you find a small brass whistle — a shepherd's call, still bright beneath the grime.",
+    onEnter: { addItem: { id: "brass_whistle", name: "Brass Whistle", qty: 1, type: "tool",
+      description: "An old shepherd's whistle. Its call might carry further than you'd expect." },
+      grantXp: { skill: "wit", amount: 10 } },
+    choices: [
+      { text: "Continue on", tag: "Explore", goto: "chapter_end" },
+    ],
+  },
+  ruin_nothing: {
+    id: "ruin_nothing",
+    narration:
+      "You pick through the rubble but find nothing but damp stone and the smell of moss. Whatever this place once held, time has taken it.",
+    choices: [
+      { text: "Continue on", tag: "Explore", goto: "chapter_end" },
+    ],
+  },
+  ridge_path: {
+    id: "ridge_path",
+    narration:
+      "The ridge path climbs steadily, and the wind picks up, carrying the smell of woodsmoke from somewhere below. A figure crouches near a snare line at the trail's edge, checking traps with practiced hands.",
+    choices: [
+      { text: "Approach openly", tag: "Explore", goto: "meet_briar" },
+      { text: "Watch quietly before deciding", tag: "Investigate", skill: "wit", dc: 7,
+        success: "briar_read", failure: "meet_briar" },
+    ],
+  },
+  briar_read: {
+    id: "briar_read",
+    narration:
+      "You watch a moment longer — the crouched figure works with quick, careful movements, resetting a snare that had clearly caught nothing. Not a poacher, then. A scout, or someone who lives by this trail out of necessity, not greed.",
+    choices: [
+      { text: "Approach, now that you understand them a little better", tag: "Explore", goto: "meet_briar" },
+    ],
+  },
+  meet_briar: {
+    id: "meet_briar",
+    narration:
+      "The figure looks up without startling — they clearly heard you coming well before you arrived. 'Briar,' they say simply, nodding at the snare line. 'Traps are for rabbits, not company. You headed toward the pass?'",
+    onEnter: { setFlag: "met_briar" },
+    choices: [
+      { text: "Ask Briar to join you", tag: "Recruit", goto: "briar_joined" },
+      { text: "Say you're just passing through", tag: "Explore", goto: "chapter_end" },
+    ],
+  },
+  briar_joined: {
+    id: "briar_joined",
+    narration:
+      "Briar shoulders a worn satchel of pouches and dried herbs and falls in beside you without further ceremony. 'I know this ridge. You'll want to know it too, before winter.'",
+    onEnter: { addParty: "briar" },
+    choices: [
+      { text: "Continue along the ridge", tag: "Explore", goto: "chapter_end" },
+    ],
+  },
+  chapter_end: {
+    id: "chapter_end",
+    narration:
+      "The road ahead curves out of sight toward the pass, and the light is beginning to turn gold with afternoon. Whatever waits beyond the ridge, you'll meet it together — or alone, if that's the road you chose.\n\n(End of this chapter. More of the Ledger is still being written — check back for updates, or write your own chapter in data.js!)",
+    choices: [],
+  },
+};
+
+// ===== dice.js =====
+// All randomness is isolated here so the rest of the game stays deterministic
+// and easy to reason about. The LLM never touches these numbers — it can
+// request a check (skill + difficulty), but this module always makes the
+// actual roll and decides the outcome.
+
+const DIE_SIDES = 12;
+
+function rollDie(sides = DIE_SIDES) {
+  return 1 + Math.floor(Math.random() * sides);
+}
+
+function rollDice(sides, count = 1) {
+  let total = 0;
+  const rolls = [];
+  for (let i = 0; i < count; i++) {
+    const r = 1 + Math.floor(Math.random() * sides);
+    rolls.push(r);
+    total += r;
+  }
+  return { total, rolls };
+}
+
+// A skill check: d12 + skill level vs a difficulty class (DC, 1-12 typical).
+// Returns a rich result object so the UI/LLM can narrate it.
+function skillCheck(skillLevel, dc) {
+  const roll = rollDie(DIE_SIDES);
+  const modifier = skillLevel - 1; // level 1 = +0, level 2 = +1, etc.
+  const total = roll + modifier;
+  const success = total >= dc;
+  const critical = roll === DIE_SIDES;
+  const fumble = roll === 1;
+  return { roll, modifier, total, dc, success, critical, fumble, dieSides: DIE_SIDES };
+}
+
+// Clamp any difficulty the LLM proposes into a sane, game-balanced range.
+function clampDifficulty(dc) {
+  const n = Number(dc);
+  if (!Number.isFinite(n)) return 7;
+  return Math.min(12, Math.max(4, Math.round(n)));
+}
+
+// ===== state.js =====
+
+const SAVE_KEY = "wayfarers-ledger-save-v1";
+
+function freshState() {
+  return {
+    player: {
+      name: "Wayfarer",
+      hp: 20,
+      maxHp: 20,
+      skills: structuredClone(STARTING_SKILLS),
+    },
+    inventory: structuredClone(STARTING_INVENTORY),
+    abilities: structuredClone(STARTING_ABILITIES),
+    party: [],
+    flags: {},
+    currentNode: "start",
+    history: [], // short rolling log of node ids, for LLM context only
+    log: [],     // full visible transcript: { type, text } entries, persisted
+  };
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return freshState();
+    const parsed = JSON.parse(raw);
+    if (!parsed.player || !parsed.currentNode) return freshState();
+    if (!Array.isArray(parsed.log)) parsed.log = [];
+    return parsed;
+  } catch (e) {
+    console.warn("Save data was unreadable, starting fresh.", e);
+    return freshState();
+  }
+}
+
+function saveState(state) {
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    return true;
+  } catch (e) {
+    console.warn("Could not save game.", e);
+    return false;
+  }
+}
+
+function resetState() {
+  localStorage.removeItem(SAVE_KEY);
+  return freshState();
+}
+
+// ---------- Inventory ----------
+function addItem(state, item) {
+  const existing = state.inventory.find(i => i.id === item.id);
+  if (existing) {
+    existing.qty += item.qty ?? 1;
+  } else {
+    state.inventory.push({ ...item, qty: item.qty ?? 1 });
+  }
+}
+
+function consumeItem(state, id, qty = 1) {
+  const existing = state.inventory.find(i => i.id === id);
+  if (!existing) return false;
+  existing.qty -= qty;
+  if (existing.qty <= 0) {
+    state.inventory = state.inventory.filter(i => i.id !== id);
+  }
+  return true;
+}
+
+// ---------- Party ----------
+function addPartyMember(state, memberId) {
+  const template = RECRUITABLE_PARTY[memberId];
+  if (!template) return;
+  if (state.party.find(p => p.id === memberId)) return;
+  state.party.push({ ...template, hp: 15, maxHp: 15 });
+}
+
+function restParty(state) {
+  state.player.hp = state.player.maxHp;
+  state.party.forEach(p => { p.hp = p.maxHp; });
+}
+
+// ---------- Skills / XP ----------
+function xpNeeded(level) {
+  return XP_PER_LEVEL * level;
+}
+
+function grantXp(state, skillId, amount) {
+  const skill = state.player.skills[skillId];
+  if (!skill) return { leveledUp: false };
+  skill.xp += amount;
+  let leveledUp = false;
+  while (skill.xp >= xpNeeded(skill.level)) {
+    skill.xp -= xpNeeded(skill.level);
+    skill.level += 1;
+    leveledUp = true;
+  }
+  return { leveledUp, newLevel: skill.level };
+}
+
+function skillProgress(skill) {
+  const needed = xpNeeded(skill.level);
+  return { needed, pct: Math.min(100, Math.round((skill.xp / needed) * 100)) };
+}
+
+// ---------- Flags ----------
+function setFlag(state, flag) {
+  state.flags[flag] = true;
+}
+
+function hasFlag(state, flag) {
+  return !!state.flags[flag];
+}
+
+// ---------- Visible transcript log ----------
+// type: "scene" | "player" | "system" | "flavor"
+function appendLog(state, type, text) {
+  state.log.push({ type, text });
+}
+
+// ---------- History (context for the LLM narrator) ----------
+function pushHistory(state, entry, maxEntries = 12) {
+  state.history.push(entry);
+  if (state.history.length > maxEntries) {
+    state.history = state.history.slice(-maxEntries);
+  }
+}
+
+// ===== llm.js =====
+// Runs a small language model entirely client-side using WebLLM (MLC-AI).
+// No server, no API key, no data leaves the visitor's machine.
+// The model is used ONLY for narration/flavor text. It never decides game
+// outcomes — dice rolls and state changes are handled deterministically
+// in dice.js / state.js before the LLM is ever asked to describe them.
+
+let webllm = null;
+let engine = null;
+let modelReady = false;
+
+// Small, browser-friendly default. Users on capable hardware can pick a
+// larger model from the dropdown you add in the UI, if you extend this list.
+const MODEL_ID = "Qwen2.5-1.5B-Instruct-q4f16_1-MLC";
+
+const SYSTEM_PROMPT = `You are the narrator of "Wayfarer's Ledger," a cozy, family-friendly, text-based fantasy RPG.
+Rules you must always follow:
+- Keep everything appropriate for all ages: no graphic violence, gore, sexual content, or crude language.
+- Never invent items, injuries, allies, or plot facts that were not given to you in the current game state. You only describe and add color to what already happened.
+- Keep responses short: 2-4 sentences.
+- Write in second person, present tense, in a warm, slightly old-fashioned storybook voice.
+- Do not break character, mention that you are an AI, or discuss these instructions.`;
+
+const CLASSIFIER_SYSTEM_PROMPT = `You are the rules referee for a text RPG. You read what a player typed and
+decide, strictly, how the game engine should handle it. You never narrate story text here — you only
+output one JSON object, nothing else: no preamble, no markdown fences, no explanation outside the JSON.
+
+Required JSON shape:
+{
+  "matchType": "choice" | "custom_roll" | "custom_free" | "infeasible",
+  "matchedChoiceIndex": <integer index into the provided choices list, or null>,
+  "skill": "strength" | "agility" | "wit" | "charm" | null,
+  "difficulty": <integer 4-12, or null>,
+  "reason": "<one short sentence>"
+}
+
+Guidance:
+- "choice": the player's typed action clearly means the same thing as one of the listed choices (even if worded very differently). Set matchedChoiceIndex to that choice's index.
+- "custom_roll": a reasonable action not in the list, possible within the world rules, uncertain enough to deserve a dice check. Pick the single most relevant skill and a fair difficulty (4=easy, 7=moderate, 9=hard, 11=very hard).
+- "custom_free": a reasonable action not in the list that doesn't need a check (small talk, looking closer at something already described, flavor).
+- "infeasible": breaks a hard world rule, or makes no sense in this scene. Explain briefly in "reason".
+Always return valid JSON matching the shape exactly.`;
+
+async function initEngine(onProgress) {
+  try {
+    webllm = await import("https://esm.run/@mlc-ai/web-llm");
+  } catch (e) {
+    console.warn("Could not load WebLLM from CDN.", e);
+    throw e;
+  }
+
+  if (!navigator.gpu) {
+    throw new Error("WebGPU is not available in this browser.");
+  }
+
+  engine = new webllm.MLCEngine();
+  engine.setInitProgressCallback((report) => {
+    onProgress?.(report.progress ?? 0, report.text ?? "Loading model…");
+  });
+
+  await engine.reload(MODEL_ID);
+  modelReady = true;
+  return true;
+}
+
+function isReady() {
+  return modelReady;
+}
+
+// context: a short plain-text description of current game state + the event
+// that just happened (built by game.js). Returns narration text.
+async function narrate(context, { maxTokens = 180 } = {}) {
+  if (!modelReady || !engine) {
+    throw new Error("LLM engine is not ready.");
+  }
+  const reply = await engine.chat.completions.create({
+    messages: [
+      { role: "system", content: SYSTEM_PROMPT },
+      { role: "user", content: context },
+    ],
+    temperature: 0.8,
+    max_tokens: maxTokens,
+  });
+  return reply.choices?.[0]?.message?.content?.trim() ?? "";
+}
+
+// Classifies a free-typed player action against the current scene's real
+// options. Returns a parsed object matching the schema in
+// CLASSIFIER_SYSTEM_PROMPT, or null if the model's output couldn't be
+// parsed (callers should fall back to a safe default in that case).
+async function classifyAction(context) {
+  if (!modelReady || !engine) {
+    throw new Error("LLM engine is not ready.");
+  }
+  const reply = await engine.chat.completions.create({
+    messages: [
+      { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
+      { role: "user", content: context },
+    ],
+    temperature: 0.15,
+    max_tokens: 150,
+  });
+  const raw = reply.choices?.[0]?.message?.content?.trim() ?? "";
+  return parseClassifierJson(raw);
+}
+
+function parseClassifierJson(raw) {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(raw.slice(start, end + 1));
+    const validTypes = ["choice", "custom_roll", "custom_free", "infeasible"];
+    if (!validTypes.includes(parsed.matchType)) return null;
+    return parsed;
+  } catch (e) {
+    return null;
+  }
+}
+
+const LLM = { initEngine, isReady, narrate, classifyAction };
+
+// ===== main.js =====
+
+let state = loadState();
+let llmEnabled = false;
+let pendingAction = null; // { kind: 'choice'|'custom', skill, dc, label, choice? }
+let inputLocked = false;
+
+// ---------- DOM refs ----------
+const el = (id) => document.getElementById(id);
+const loadingScreen = el("loading-screen");
+const gameScreen = el("game-screen");
+const progressFill = el("progress-fill");
+const loadingLabel = el("loading-label");
+const skipBtn = el("skip-llm-btn");
+const llmStatus = el("llm-status");
+const narrationBox = el("narration");
+
+// ---------- Boot ----------
+async function boot() {
+  skipBtn.addEventListener("click", () => enterGame(false));
+  try {
+    await LLM.initEngine((progress, text) => {
+      progressFill.style.width = `${Math.round(progress * 100)}%`;
+      loadingLabel.textContent = text;
+    });
+    enterGame(true);
+  } catch (e) {
+    console.warn("LLM unavailable, continuing without it.", e);
+    enterGame(false);
+  }
+}
+
+function enterGame(withLlm) {
+  llmEnabled = withLlm && LLM.isReady();
+  loadingScreen.classList.remove("active");
+  gameScreen.classList.add("active");
+  llmStatus.textContent = llmEnabled
+    ? `Narrator: AI active (local, d${DIE_SIDES})`
+    : `Narrator: quick-actions only (local, d${DIE_SIDES})`;
+  setupTabs();
+  setupFooter();
+  setupFreeAction();
+  renderAll();
+
+  if (state.log.length === 0) {
+    enterNode(state.currentNode, { isEntry: true });
+  } else {
+    replayLog();
+    renderChoices(STORY[state.currentNode]);
+  }
+}
+
+// ---------- Tabs ----------
+function setupTabs() {
+  document.querySelectorAll(".tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      el(`tab-${btn.dataset.tab}`).classList.add("active");
+      if (btn.dataset.tab !== "story") renderAll();
+    });
+  });
+}
+
+function setupFooter() {
+  el("save-btn").addEventListener("click", () => {
+    const ok = saveState(state);
+    flashFooterMessage(ok ? "Saved." : "Could not save.");
+  });
+  el("reset-btn").addEventListener("click", () => {
+    if (!confirm("Reset your whole journey? This cannot be undone.")) return;
+    state = resetState();
+    renderAll();
+    narrationBox.innerHTML = "";
+    enterNode(state.currentNode, { isEntry: true });
+  });
+}
+
+function flashFooterMessage(msg) {
+  const prev = llmStatus.textContent;
+  llmStatus.textContent = msg;
+  setTimeout(() => { llmStatus.textContent = prev; }, 1800);
+}
+
+// ---------- Rendering: side panels ----------
+function renderAll() {
+  renderInventory();
+  renderAbilitiesAndSkills();
+  renderParty();
+  renderCharacterSheet();
+}
+
+function renderInventory() {
+  const container = el("inventory-list");
+  container.innerHTML = "";
+  if (state.inventory.length === 0) {
+    container.innerHTML = `<p class="empty-note">Your pack is empty.</p>`;
+    return;
+  }
+  state.inventory.forEach(item => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+    card.innerHTML = `<h3>${item.name}</h3><p>${item.description}</p><span class="qty">Qty: ${item.qty}</span>`;
+    container.appendChild(card);
+  });
+}
+
+function renderAbilitiesAndSkills() {
+  const skillsContainer = el("skills-list");
+  skillsContainer.innerHTML = "";
+  Object.entries(state.player.skills).forEach(([id, skill]) => {
+    const { pct } = skillProgress(skill);
+    const row = document.createElement("div");
+    row.className = "skill-row";
+    row.innerHTML = `
+      <span class="skill-name">${id}</span>
+      <div class="skill-track"><div class="skill-fill" style="width:${pct}%"></div></div>
+      <span class="skill-level">Lv ${skill.level}</span>
+    `;
+    skillsContainer.appendChild(row);
+  });
+
+  const abilitiesContainer = el("abilities-list");
+  abilitiesContainer.innerHTML = "";
+  state.abilities.forEach(ab => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+    const usesLine = ab.type === "active" ? `<span class="qty">Uses left: ${ab.usesLeft}</span>` : `<span class="qty">Passive</span>`;
+    card.innerHTML = `<h3>${ab.name}</h3><p>${ab.description}</p>${usesLine}`;
+    abilitiesContainer.appendChild(card);
+  });
+}
+
+function renderParty() {
+  const container = el("party-list");
+  container.innerHTML = "";
+  if (state.party.length === 0) {
+    container.innerHTML = `<p class="empty-note">You travel alone, for now. Companions can be found along the road.</p>`;
+    return;
+  }
+  state.party.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "item-card";
+    card.innerHTML = `<h3>${p.name}</h3><p>${p.role}</p><p>${p.description}</p><span class="qty">HP: ${p.hp}/${p.maxHp}</span>`;
+    container.appendChild(card);
+  });
+}
+
+function renderCharacterSheet() {
+  const container = el("character-sheet");
+  container.innerHTML = `
+    <div class="stat-row"><span class="stat-label">Name</span><span class="stat-value">${state.player.name}</span></div>
+    <div class="stat-row"><span class="stat-label">Health</span><span class="stat-value">${state.player.hp} / ${state.player.maxHp}</span></div>
+    <div class="stat-row"><span class="stat-label">Companions</span><span class="stat-value">${state.party.length}</span></div>
+    <div class="stat-row"><span class="stat-label">Items carried</span><span class="stat-value">${state.inventory.length}</span></div>
+  `;
+}
+
+// ---------- Transcript log (append-only, persisted) ----------
+function logAndRender(type, text) {
+  appendLog(state, type, text);
+  renderLogEntry(type, text);
+  saveState(state);
+}
+
+function renderLogEntry(type, text) {
+  const p = document.createElement("p");
+  if (type === "scene") p.className = "drop-cap";
+  else if (type === "system") p.className = "system-line";
+  else if (type === "player") p.className = "player-line";
+  else if (type === "flavor") p.className = "flavor-line";
+  else if (type === "infeasible") p.className = "infeasible-line";
+  p.textContent = text;
+  narrationBox.appendChild(p);
+  narrationBox.scrollTop = narrationBox.scrollHeight;
+  return p;
+}
+
+function replayLog() {
+  narrationBox.innerHTML = "";
+  state.log.forEach(entry => renderLogEntry(entry.type, entry.text));
+}
+
+// ---------- Story engine ----------
+function applyOnEnter(effects) {
+  if (!effects) return [];
+  const notes = [];
+  if (effects.setFlag) setFlag(state, effects.setFlag);
+  if (effects.addItem) {
+    addItem(state, effects.addItem);
+    notes.push(`You obtained: ${effects.addItem.name}.`);
+  }
+  if (effects.consumeItem) consumeItem(state, effects.consumeItem.id, effects.consumeItem.qty);
+  if (effects.addParty) {
+    addPartyMember(state, effects.addParty);
+    const member = RECRUITABLE_PARTY[effects.addParty];
+    notes.push(`${member.name} has joined your party.`);
+  }
+  if (effects.restParty) restParty(state);
+  if (effects.grantXp) {
+    const result = grantXp(state, effects.grantXp.skill, effects.grantXp.amount);
+    notes.push(`+${effects.grantXp.amount} ${effects.grantXp.skill} experience.`);
+    if (result.leveledUp) notes.push(`Your ${effects.grantXp.skill} skill rose to level ${result.newLevel}!`);
+  }
+  return notes;
+}
+
+async function enterNode(nodeId, { isEntry = false } = {}) {
+  const node = STORY[nodeId];
+  if (!node) return;
+  state.currentNode = nodeId;
+  const notes = applyOnEnter(node.onEnter);
+  pushHistory(state, nodeId);
+
+  logAndRender("scene", node.narration);
+  notes.forEach(note => logAndRender("system", note));
+  renderAll();
+  renderChoices(node);
+  el("dice-tray").classList.add("hidden");
+
+  if (llmEnabled && node.choices && node.choices.length > 0) {
+    const flavorP = renderLogEntry("flavor", "…");
+    try {
+      const context = buildFlavorContext(node);
+      const flavor = await LLM.narrate(context);
+      flavorP.textContent = flavor;
+      appendLog(state, "flavor", flavor);
+      saveState(state);
+      narrationBox.scrollTop = narrationBox.scrollHeight;
+    } catch (e) {
+      flavorP.remove();
+    }
+  }
+}
+
+function buildFlavorContext(node) {
+  const partyNames = state.party.map(p => p.name).join(", ") || "no one yet";
+  return `Current scene: ${node.narration}
+Player party: traveling with ${partyNames}.
+Add one short, atmospheric embellishment (sensory detail, mood, or a small observation) to this scene. Do not introduce new characters, items, or plot events. Do not repeat the scene text.`;
+}
+
+function renderChoices(node) {
+  const container = el("choices");
+  container.innerHTML = "";
+  if (!node.choices || node.choices.length === 0) return;
+  node.choices.forEach(choice => {
+    const btn = document.createElement("button");
+    btn.className = "choice-btn";
+    btn.innerHTML = `<span class="choice-tag">${choice.tag}</span>${choice.text}`;
+    btn.addEventListener("click", () => handleChoiceSelected(choice));
+    container.appendChild(btn);
+  });
+}
+
+function handleChoiceSelected(choice, { alreadyLogged = false } = {}) {
+  if (!alreadyLogged) logAndRender("player", choice.text);
+  if (choice.skill) {
+    pendingAction = { kind: "choice", skill: choice.skill, dc: choice.dc, label: choice.text, choice };
+    showDiceTray(`${choice.text} — requires a ${choice.skill} check (DC ${choice.dc})`);
+    return;
+  }
+  enterNode(choice.goto);
+}
+
+function showDiceTray(promptText) {
+  const tray = el("dice-tray");
+  tray.classList.remove("hidden");
+  el("dice-prompt").textContent = promptText;
+  el("dice-result").textContent = "";
+  document.querySelectorAll(".choice-btn").forEach(b => b.disabled = true);
+  lockInput(true);
+
+  const rollBtn = el("roll-btn");
+  rollBtn.disabled = false;
+  rollBtn.onclick = () => {
+    rollBtn.disabled = true;
+    resolvePendingAction();
+  };
+}
+
+function resolvePendingAction() {
+  const action = pendingAction;
+  pendingAction = null;
+  const skill = state.player.skills[action.skill];
+  const result = skillCheck(skill.level, action.dc);
+  let msg = `d${DIE_SIDES} roll: ${result.roll} + ${result.modifier} (${action.skill}) = ${result.total} vs DC ${result.dc}. `;
+  msg += result.critical ? "A critical success!" : result.fumble ? "A critical fumble." : result.success ? "Success." : "Not quite.";
+  el("dice-result").textContent = msg;
+
+  const xpGain = result.success ? 6 : 2;
+  grantXp(state, action.skill, xpGain);
+  logAndRender("system", msg);
+
+  el("dice-tray").classList.add("hidden");
+  lockInput(false);
+
+  setTimeout(async () => {
+    if (action.kind === "choice") {
+      const target = result.success ? action.choice.success : action.choice.failure;
+      enterNode(target);
+    } else {
+      // custom_roll: stays on the current scene, just narrates the outcome.
+      document.querySelectorAll(".choice-btn").forEach(b => b.disabled = false);
+      if (llmEnabled) {
+        const flavorP = renderLogEntry("flavor", "…");
+        try {
+          const node = STORY[state.currentNode];
+          const context = `Current scene: ${node.narration}
+The player attempted: "${action.label}"
+The dice check just ${result.success ? "succeeded" : "failed"}.
+Describe the outcome in 2-3 sentences, staying inside this scene. Do not grant new items or move the story to a new location — only describe the immediate result of this attempt.`;
+          const outcome = await LLM.narrate(context);
+          flavorP.textContent = outcome;
+          appendLog(state, "flavor", outcome);
+          saveState(state);
+        } catch (e) {
+          flavorP.textContent = result.success ? "It works out, more or less as you hoped." : "It doesn't go quite as planned.";
+          appendLog(state, "flavor", flavorP.textContent);
+          saveState(state);
+        }
+      } else {
+        const text = result.success ? "It works out, more or less as you hoped." : "It doesn't go quite as planned.";
+        logAndRender("system", text);
+      }
+    }
+  }, 900);
+}
+
+// ---------- Free-text action input ----------
+function lockInput(locked) {
+  inputLocked = locked;
+  el("free-action-input").disabled = locked;
+}
+
+function setupFreeAction() {
+  const form = el("free-action-form");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (inputLocked) return;
+    const input = el("free-action-input");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    lockInput(true);
+    logAndRender("player", text);
+
+    try {
+      if (llmEnabled) {
+        await handleFreeTextWithLlm(text);
+      } else {
+        handleFreeTextHeuristic(text);
+      }
+    } finally {
+      lockInput(false);
+      input.focus();
+    }
+  });
+}
+
+async function handleFreeTextWithLlm(text) {
+  const node = STORY[state.currentNode];
+  const choiceList = (node.choices || [])
+    .map((c, i) => `${i}: ${c.text}`)
+    .join("\n") || "(no listed choices here)";
+  const skillsList = Object.entries(state.player.skills).map(([id, s]) => `${id} (lv ${s.level})`).join(", ");
+  const context = `${WORLD_RULES}
+
+Current scene: ${node.narration}
+Listed choices available right now:
+${choiceList}
+Player's skills: ${skillsList}
+Player's party: ${state.party.map(p => p.name).join(", ") || "none"}
+Player's items: ${state.inventory.map(i => i.name).join(", ") || "none"}
+
+Player typed this action: "${text}"
+
+Classify it now.`;
+
+  let result = null;
+  try {
+    result = await LLM.classifyAction(context);
+  } catch (e) {
+    result = null;
+  }
+
+  if (!result) {
+    try {
+      const flavor = await LLM.narrate(`Current scene: ${node.narration}\nThe player attempts: "${text}"\nRespond in 1-2 sentences, staying strictly within this scene, granting no items or progress.`);
+      logAndRender("flavor", flavor);
+    } catch (e2) {
+      logAndRender("system", "The narrator couldn't quite parse that — try rephrasing, or use one of the quick actions below.");
+    }
+    return;
+  }
+
+  if (result.matchType === "choice" && node.choices && node.choices[result.matchedChoiceIndex]) {
+    handleChoiceSelected(node.choices[result.matchedChoiceIndex], { alreadyLogged: true });
+    return;
+  }
+
+  if (result.matchType === "custom_roll" && result.skill && state.player.skills[result.skill]) {
+    pendingAction = { kind: "custom", skill: result.skill, dc: clampDifficulty(result.difficulty), label: text };
+    showDiceTray(`${text} — requires a ${result.skill} check (DC ${clampDifficulty(result.difficulty)})`);
+    return;
+  }
+
+  if (result.matchType === "infeasible") {
+    logAndRender("infeasible", result.reason || "That's not something the world allows here.");
+    return;
+  }
+
+  try {
+    const flavor = await LLM.narrate(`Current scene: ${node.narration}\nThe player attempts: "${text}"\nDescribe what happens in 2-3 sentences, staying strictly within this scene. Grant no items, injuries, or plot progress.`);
+    logAndRender("flavor", flavor);
+  } catch (e) {
+    logAndRender("system", "Nothing much comes of it, for now.");
+  }
+}
+
+function handleFreeTextHeuristic(text) {
+  const node = STORY[state.currentNode];
+  const words = text.toLowerCase().split(/\W+/).filter(Boolean);
+  let best = null;
+  let bestScore = 0;
+  (node.choices || []).forEach(choice => {
+    const choiceWords = `${choice.text} ${choice.tag}`.toLowerCase().split(/\W+/).filter(Boolean);
+    const score = words.filter(w => choiceWords.includes(w)).length;
+    if (score > bestScore) { bestScore = score; best = choice; }
+  });
+  if (best && bestScore > 0) {
+    handleChoiceSelected(best, { alreadyLogged: true });
+  } else {
+    const options = (node.choices || []).map(c => `"${c.text}"`).join(", ") || "none right now";
+    logAndRender("system", `The narrator AI isn't running, so typed actions can only be matched to the quick actions below. Try: ${options}`);
+  }
+}
+
+boot();
+</script>
+</body>
+</html>
