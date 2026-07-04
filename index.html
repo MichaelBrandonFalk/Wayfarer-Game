@@ -887,9 +887,9 @@ output one JSON object, nothing else: no preamble, no markdown fences, no explan
 Required JSON shape:
 {
   "matchType": "choice" | "custom_roll" | "custom_free" | "infeasible",
-  "matchedChoiceIndex": <integer index into the provided choices list, or null>,
-  "skill": "strength" | "agility" | "wit" | "charm" | null,
-  "difficulty": <integer 4-12, or null>,
+  "matchedChoiceIndex": <integer index into the provided choices list, or -1 when no choice matches>,
+  "skill": "strength" | "agility" | "wit" | "charm" | "none",
+  "difficulty": <integer 4-12 for custom_roll, or 0 when no roll is needed>,
   "reason": "<one short sentence>"
 }
 
@@ -899,6 +899,26 @@ Guidance:
 - "custom_free": a reasonable action not in the list that doesn't need a check (small talk, looking closer at something already described, flavor).
 - "infeasible": breaks a hard world rule, or makes no sense in this scene. Explain briefly in "reason".
 Always return valid JSON matching the shape exactly.`;
+
+const CLASSIFIER_RESPONSE_SCHEMA = JSON.stringify({
+  type: "object",
+  properties: {
+    matchType: {
+      type: "string",
+      enum: ["choice", "custom_roll", "custom_free", "infeasible"],
+    },
+    matchedChoiceIndex: { type: "integer" },
+    skill: {
+      type: "string",
+      enum: ["strength", "agility", "wit", "charm", "none"],
+    },
+    difficulty: { type: "integer" },
+    reason: {
+      type: "string",
+    },
+  },
+  required: ["matchType", "matchedChoiceIndex", "skill", "difficulty", "reason"],
+});
 
 async function initEngine(onProgress) {
   try {
@@ -956,6 +976,10 @@ async function classifyAction(context) {
       { role: "system", content: CLASSIFIER_SYSTEM_PROMPT },
       { role: "user", content: context },
     ],
+    response_format: {
+      type: "json_object",
+      schema: CLASSIFIER_RESPONSE_SCHEMA,
+    },
     temperature: 0.15,
     max_tokens: 150,
   });
@@ -964,13 +988,17 @@ async function classifyAction(context) {
 }
 
 function parseClassifierJson(raw) {
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start === -1 || end === -1 || end <= start) return null;
   try {
-    const parsed = JSON.parse(raw.slice(start, end + 1));
+    const parsed = JSON.parse(raw);
     const validTypes = ["choice", "custom_roll", "custom_free", "infeasible"];
     if (!validTypes.includes(parsed.matchType)) return null;
+    if (!Number.isInteger(parsed.matchedChoiceIndex)) return null;
+    if (parsed.matchedChoiceIndex < 0) parsed.matchedChoiceIndex = null;
+    if (parsed.skill === "none") parsed.skill = null;
+    if (parsed.skill !== null && !["strength", "agility", "wit", "charm"].includes(parsed.skill)) return null;
+    if (parsed.difficulty !== null && !Number.isInteger(parsed.difficulty)) return null;
+    if (parsed.difficulty === 0) parsed.difficulty = null;
+    if (typeof parsed.reason !== "string") parsed.reason = "";
     return parsed;
   } catch (e) {
     return null;
